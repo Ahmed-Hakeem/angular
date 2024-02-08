@@ -48,7 +48,7 @@ aio-api-list {
         @include mixins.line-height(32);
         outline: none;
         padding: 4px 16px 4px 32px;
-        transition: all .2s;
+        transition: all 0.2s;
         width: 182px;
 
         @include mixins.placeholder {
@@ -86,14 +86,18 @@ aio-api-list {
     position: relative;
 
     @media handheld and (max-width: constants.$phone-breakpoint),
-    screen and (max-device-width: constants.$phone-breakpoint),
-    screen and (max-width: constants.$tablet-breakpoint) {
+      screen and (max-device-width: constants.$phone-breakpoint),
+      screen and (max-width: constants.$tablet-breakpoint) {
       padding: 24px 0 0;
     }
 
     h2 {
       margin-top: 16px;
       margin-bottom: 16px;
+
+      & .deprecated-api-item {
+        text-decoration: line-through;
+      }
     }
 
     /* API CLASS LIST */
@@ -108,7 +112,7 @@ aio-api-list {
       }
 
       li {
-        font-family: "Roboto Mono", monospace;
+        font-family: 'Roboto Mono', monospace;
         @include mixins.font-size(14);
         margin: 8px 0;
         @include mixins.line-height(14);
@@ -124,7 +128,7 @@ aio-api-list {
           @include mixins.line-height(16);
           padding: 0 16px;
           text-decoration: none;
-          transition: all .3s;
+          transition: all 0.3s;
 
           &.deprecated-api-item {
             text-decoration: line-through;
