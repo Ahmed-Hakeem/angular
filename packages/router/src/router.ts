@@ -7,7 +7,7 @@
  */
 
 import {Location} from '@angular/common';
-import {inject, Injectable, NgZone, Type, ɵConsole as Console, ɵPendingTasks as PendingTasks, ɵRuntimeError as RuntimeError, ɵWritable as Writable} from '@angular/core';
+import {inject, Injectable, NgZone, Type, ɵConsole as Console, ɵPendingTasks as PendingTasks, ɵRuntimeError as RuntimeError} from '@angular/core';
 import {Observable, Subject, Subscription, SubscriptionLike} from 'rxjs';
 
 import {createSegmentGroupFromRoute, createUrlTreeFromSegmentGroup} from './create_url_tree';
@@ -249,16 +249,14 @@ export class Router {
     // Don't need to use Zone.wrap any more, because zone.js
     // already patch onPopState, so location change callback will
     // run into ngZone
-    if (!this.nonRouterCurrentEntryChangeSubscription) {
-      this.nonRouterCurrentEntryChangeSubscription =
-          this.stateManager.registerNonRouterCurrentEntryChangeListener((url, state) => {
-            // The `setTimeout` was added in #12160 and is likely to support Angular/AngularJS
-            // hybrid apps.
-            setTimeout(() => {
-              this.navigateToSyncWithBrowser(url, 'popstate', state);
-            }, 0);
-          });
-    }
+    this.nonRouterCurrentEntryChangeSubscription ??=
+        this.stateManager.registerNonRouterCurrentEntryChangeListener((url, state) => {
+          // The `setTimeout` was added in #12160 and is likely to support Angular/AngularJS
+          // hybrid apps.
+          setTimeout(() => {
+            this.navigateToSyncWithBrowser(url, 'popstate', state);
+          }, 0);
+        });
   }
 
   /**
@@ -574,8 +572,7 @@ export class Router {
   }
 
   private removeEmptyProps(params: Params): Params {
-    return Object.keys(params).reduce((result: Params, key: string) => {
-      const value: any = params[key];
+    return Object.entries(params).reduce((result: Params, [key, value]: [string, any]) => {
       if (value !== null && value !== undefined) {
         result[key] = value;
       }

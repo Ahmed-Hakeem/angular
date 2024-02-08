@@ -161,6 +161,13 @@ export class RouterLink implements OnChanges, OnDestroy {
    */
   @Input() state?: {[k: string]: any};
   /**
+   * Passed to {@link Router#navigateByUrl} as part of the
+   * `NavigationBehaviorOptions`.
+   * @see {@link NavigationBehaviorOptions#info}
+   * @see {@link Router#navigateByUrl}
+   */
+  @Input() info?: unknown;
+  /**
    * Passed to {@link Router#createUrlTree} as part of the
    * `UrlCreationOptions`.
    * Specify a value here when you do not want to use the default value
@@ -269,7 +276,9 @@ export class RouterLink implements OnChanges, OnDestroy {
       ['$event.button', '$event.ctrlKey', '$event.shiftKey', '$event.altKey', '$event.metaKey'])
   onClick(button: number, ctrlKey: boolean, shiftKey: boolean, altKey: boolean, metaKey: boolean):
       boolean {
-    if (this.urlTree === null) {
+    const urlTree = this.urlTree;
+        
+    if (urlTree === null) {
       return true;
     }
 
@@ -287,8 +296,9 @@ export class RouterLink implements OnChanges, OnDestroy {
       skipLocationChange: this.skipLocationChange,
       replaceUrl: this.replaceUrl,
       state: this.state,
+      info: this.info,
     };
-    this.router.navigateByUrl(this.urlTree, extras);
+    this.router.navigateByUrl(urlTree, extras);
 
     // Return `false` for `<a>` elements to prevent default action
     // and cancel the native behavior, since the navigation is handled
@@ -302,8 +312,9 @@ export class RouterLink implements OnChanges, OnDestroy {
   }
 
   private updateHref(): void {
-    this.href = this.urlTree !== null && this.locationStrategy ?
-        this.locationStrategy?.prepareExternalUrl(this.router.serializeUrl(this.urlTree)) :
+    const urlTree = this.urlTree;
+    this.href = urlTree !== null && this.locationStrategy ?
+        this.locationStrategy?.prepareExternalUrl(this.router.serializeUrl(urlTree)) :
         null;
 
     const sanitizedValue = this.href === null ?

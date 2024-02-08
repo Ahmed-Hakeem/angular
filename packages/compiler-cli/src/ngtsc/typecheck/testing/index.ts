@@ -6,14 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {CssSelector, ParseSourceFile, ParseSourceSpan, parseTemplate, ParseTemplateOptions, R3TargetBinder, SchemaMetadata, SelectorMatcher, TmplAstElement} from '@angular/compiler';
+import {BindingPipe, CssSelector, ParseSourceFile, ParseSourceSpan, parseTemplate, ParseTemplateOptions, R3TargetBinder, SchemaMetadata, SelectorMatcher, TmplAstElement} from '@angular/compiler';
 import ts from 'typescript';
 
 import {absoluteFrom, AbsoluteFsPath, getSourceFileOrError, LogicalFileSystem} from '../../file_system';
 import {TestFile} from '../../file_system/testing';
 import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, Reference, ReferenceEmitter, RelativePathStrategy} from '../../imports';
 import {NOOP_INCREMENTAL_BUILD} from '../../incremental';
-import {ClassPropertyMapping, CompoundMetadataReader, DecoratorInputTransform, DirectiveMeta, HostDirectivesResolver, InputMapping, MatchSource, MetadataReaderWithIndex, MetaKind, NgModuleIndex} from '../../metadata';
+import {ClassPropertyMapping, CompoundMetadataReader, DecoratorInputTransform, DirectiveMeta, HostDirectivesResolver, InputMapping, MatchSource, MetadataReaderWithIndex, MetaKind, NgModuleIndex, PipeMeta} from '../../metadata';
 import {NOOP_PERF_RECORDER} from '../../perf';
 import {TsCreateProgramDriver} from '../../program_driver';
 import {ClassDeclaration, isNamedClassDeclaration, TypeScriptReflectionHost} from '../../reflection';
@@ -105,16 +105,117 @@ export function angularCoreDts(): TestFile {
 
     export declare type NgIterable<T> = Array<T> | Iterable<T>;
 
-    export declare const ɵINPUT_SIGNAL_BRAND_READ_TYPE: unique symbol;
-    export declare const ɵINPUT_SIGNAL_BRAND_WRITE_TYPE: unique symbol;
+    /**
+     * -------
+     * Signals
+     * ------
+     */
 
-    export declare type InputSignal<ReadT, WriteT = ReadT> = (() => ReadT)&{
+    export declare const SIGNAL: unique symbol;
+    export declare type Signal<T> = (() => T) & {
+      [SIGNAL]: unknown;
+    };
+    export declare function signal<T>(initialValue: T): WritableSignal<T>;
+    export declare function computed<T>(computation: () => T): Signal<T>;
+
+    const WRITABLE_SIGNAL = /* @__PURE__ */ Symbol('WRITABLE_SIGNAL');
+
+    export interface WritableSignal<T> extends Signal<T> {
+      [WRITABLE_SIGNAL]: T;
+      set(value: T): void;
+      update(updateFn: (value: T) => T): void;
+      asReadonly(): Signal<T>;
+    }
+
+    /**
+     * -------
+     * Signal inputs
+     * ------
+     */
+
+    export interface InputOptions<ReadT, WriteT> {
+      alias?: string;
+      transform?: (v: WriteT) => ReadT;
+    }
+
+    export type InputOptionsWithoutTransform<ReadT> =
+        InputOptions<ReadT, ReadT>&{transform?: undefined};
+    export type InputOptionsWithTransform<ReadT, WriteT> =
+        Required<Pick<InputOptions<ReadT, WriteT>, 'transform'>>&InputOptions<ReadT, WriteT>;
+
+    const ɵINPUT_SIGNAL_BRAND_READ_TYPE: unique symbol;
+    export const ɵINPUT_SIGNAL_BRAND_WRITE_TYPE: unique symbol;
+
+    export interface InputSignalWithTransform<ReadT, WriteT> extends Signal<ReadT> {
       [ɵINPUT_SIGNAL_BRAND_READ_TYPE]: ReadT;
       [ɵINPUT_SIGNAL_BRAND_WRITE_TYPE]: WriteT;
+    }
+    export interface InputSignal<ReadT> extends InputSignalWithTransform<ReadT, ReadT> {}
+
+    export function inputFunction<ReadT>(): InputSignal<ReadT|undefined>;
+    export function inputFunction<ReadT>(
+        initialValue: ReadT, opts?: InputOptionsWithoutTransform<ReadT>): InputSignal<ReadT>;
+    export function inputFunction<ReadT, WriteT>(
+        initialValue: ReadT,
+        opts: InputOptionsWithTransform<ReadT, WriteT>): InputSignalWithTransform<ReadT, WriteT>;
+    export function inputFunction<ReadT, WriteT>(
+        _initialValue?: ReadT,
+        _opts?: InputOptions<ReadT, WriteT>): InputSignalWithTransform<ReadT|undefined, WriteT> {
+      return null!;
+    }
+
+    export function inputRequiredFunction<ReadT>(opts?: InputOptionsWithoutTransform<ReadT>):
+        InputSignal<ReadT>;
+    export function inputRequiredFunction<ReadT, WriteT>(
+        opts: InputOptionsWithTransform<ReadT, WriteT>): InputSignalWithTransform<ReadT, WriteT>;
+    export function inputRequiredFunction<ReadT, WriteT>(_opts?: InputSignalWithTransform<ReadT, WriteT>):
+        InputSignalWithTransform<ReadT, WriteT> {
+      return null!;
+    }
+
+    export type InputFunction = typeof inputFunction&{required: typeof inputRequiredFunction};
+
+    export const input: InputFunction = (() => {
+      (inputFunction as any).required = inputRequiredFunction;
+      return inputFunction as InputFunction;
+    })();
+
+    export type Signal<T> = (() => T);
+
+    // Note: needs to be kept in sync with the copies in render3/reactivity/signal.ts and
+    // fake_core/index.ts to ensure consistent tests.
+    export function ɵunwrapWritableSignal<T>(value: T|{[WRITABLE_SIGNAL]: T}): T {
+      return null!;
+    }
+
+    export interface ModelOptions {
+      alias?: string;
+    }
+
+    export interface ModelSignal<T> extends WritableSignal<T> {
+      [ɵINPUT_SIGNAL_BRAND_READ_TYPE]: T;
+      [ɵINPUT_SIGNAL_BRAND_WRITE_TYPE]: T;
+      subscribe(callback: (value: T) => void): {unsubscribe: () => void};
+    }
+
+    export interface ModelFunction {
+      <T>(): ModelSignal<T|undefined>;
+      <T>(initialValue: T, opts?: ModelOptions): ModelSignal<T>;
+      required<T>(opts?: ModelOptions): ModelSignal<T>;
+    }
+
+    export const model: ModelFunction = null!;
+
+    export type ɵUnwrapInputSignalWriteType<Field> =
+        Field extends InputSignalWithTransform<unknown, infer WriteT>? WriteT : never;
+    export type ɵUnwrapDirectiveSignalInputs<Dir, Fields extends keyof Dir> = {
+      [P in Fields]: ɵUnwrapInputSignalWriteType<Dir[P]>
     };
 
-    export type ɵUnwrapInputSignalWriteType<Field> = Field extends InputSignal<unknown, infer WriteT>? WriteT : never;
-    export type ɵUnwrapDirectiveSignalInputs<Dir, Fields extends keyof Dir> = {[P in Fields]: ɵUnwrapInputSignalWriteType<Dir[P]>};
+    export interface OutputEmitter<T> {
+      emit(value: T): void;
+      subscribe(listener: (v: T) => void): void;
+    }
    `
   };
 }
@@ -669,7 +770,7 @@ function prepareDeclarations(
     declarations: TestDeclaration[], resolveDeclaration: DeclarationResolver,
     metadataRegistry: Map<string, TypeCheckableDirectiveMeta>) {
   const matcher = new SelectorMatcher<DirectiveMeta[]>();
-  const pipes = new Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>();
+  const pipes = new Map<string, PipeMeta>();
   const hostDirectiveResolder = new HostDirectivesResolver(
       getFakeMetadataReader(metadataRegistry as Map<string, DirectiveMeta>));
   const directives: DirectiveMeta[] = [];
@@ -684,7 +785,15 @@ function prepareDeclarations(
     if (decl.type === 'directive') {
       registerDirective(decl);
     } else if (decl.type === 'pipe') {
-      pipes.set(decl.pipeName, new Reference(resolveDeclaration(decl)));
+      pipes.set(decl.pipeName, {
+        kind: MetaKind.Pipe,
+        ref: new Reference(resolveDeclaration(decl)),
+        name: decl.pipeName,
+        nameExpr: null,
+        isStandalone: false,
+        decorator: null,
+        isExplicitlyDeferred: false
+      });
     }
   }
 
@@ -734,6 +843,7 @@ function getDirectiveMetaFromDeclaration(
     decorator: null,
     ngContentSelectors: decl.ngContentSelectors || null,
     preserveWhitespaces: decl.preserveWhitespaces ?? false,
+    isExplicitlyDeferred: false,
     hostDirectives: decl.hostDirectives === undefined ? null : decl.hostDirectives.map(hostDecl => {
       return {
         directive: new Reference(resolveDeclaration(hostDecl.directive)),
@@ -786,11 +896,13 @@ function makeScope(program: ts.Program, sf: ts.SourceFile, decls: TestDeclaratio
         isStandalone: false,
         isSignal: false,
         imports: null,
+        deferredImports: null,
         schemas: null,
         decorator: null,
         assumedToExportProviders: false,
         ngContentSelectors: decl.ngContentSelectors || null,
         preserveWhitespaces: decl.preserveWhitespaces ?? false,
+        isExplicitlyDeferred: false,
         hostDirectives:
             decl.hostDirectives === undefined ? null : decl.hostDirectives.map(hostDecl => {
               return {
@@ -814,6 +926,7 @@ function makeScope(program: ts.Program, sf: ts.SourceFile, decls: TestDeclaratio
         nameExpr: null,
         isStandalone: false,
         decorator: null,
+        isExplicitlyDeferred: false,
       });
     }
   }
@@ -850,6 +963,8 @@ export class NoopOobRecorder implements OutOfBandDiagnosticRecorder {
   }
   missingReferenceTarget(): void {}
   missingPipe(): void {}
+  deferredPipeUsedEagerly(templateId: TemplateId, ast: BindingPipe): void {}
+  deferredComponentUsedEagerly(templateId: TemplateId, element: TmplAstElement): void {}
   illegalAssignmentToTemplateVar(): void {}
   duplicateTemplateVar(): void {}
   requiresInlineTcb(): void {}
